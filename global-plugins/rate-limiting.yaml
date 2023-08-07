@@ -1,0 +1,7 @@
+plugins:
+- name: rate-limiting
+  _config: redis
+  config:
+    minute: 30
+    hour: 500
+    limit_by: consumer

@@ -1,0 +1,13 @@
+services:
+  - name: ${{ env "DECK_SERVICE_TAG" }}-service
+    enabled: true
+    url: http://echo
+    routes:
+      - name: ${{ env "DECK_SERVICE_TAG" }}-test-route
+        expression: http.path=="/echo"
+      - name: ${{ env "DECK_SERVICE_TAG" }}-basic-auth-route
+        expression: http.path=="/basic"
+      - name: ${{ env "DECK_SERVICE_TAG" }}-key-auth-route
+        expression: http.path=="/key"
+      - name: ${{ env "DECK_SERVICE_TAG" }}-jwt-auth-route
+        expression: http.path=="/jwt"

@@ -1,0 +1,10 @@
+services:
+- enabled: true
+  host: 127.0.0.1
+  name: ${{ env "DECK_SERVICE_TAG" }}-service
+  port: 65535
+  protocol: http
+  routes:
+  - expression: http.path=="/.well-known/acme-challenge" && http.host=="test.demofor.fun"
+      && net.protocol=="http"
+    name: dummy-route
