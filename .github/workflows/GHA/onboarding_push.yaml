@@ -28,19 +28,14 @@ jobs:
           - env: dev
             ADMIN_API_URL: ${{ secrets.DEV_ADMIN_API_URL }}
             ADMIN_API_AUTH_HEADER: ${{ secrets.DEV_ADMIN_API_AUTH_HEADER }}
-    env:
-      DECK_VERSION: ${{ env.DECK_VERSION }}
     steps:
       - name: Checkout branch
         uses: actions/checkout@v3
-      - uses: kong/setup-deck@v1
+      - name: Setup deck
+        uses: kong/setup-deck@v1
         with:
-          deck-version: ${DECK_VERSION}
-      # - name: Install Deck
-      #   run: |
-      #     curl -sL https://github.com/Kong/deck/releases/download/v${DECK_VERSION}/deck_${DECK_VERSION}_linux_amd64.tar.gz -o deck.tar.gz
-      #     tar -xf deck.tar.gz -C /tmp
-      #     sudo cp /tmp/deck /usr/local/bin/
+          deck-version: ${{ env.DECK_VERSION }}
+          wrapper: false
       - name: Check Control plane is reachable
         run: |
           deck ping \
@@ -106,16 +101,15 @@ jobs:
             folders: acme
         folders: ${{ fromJson(needs.build-matrix.outputs.folder_matrix) }}
     env:
-      DECK_VERSION: ${{ env.DECK_VERSION }}
       DECK_SERVICE_TAG: ${{ matrix.folders }}
     steps:
       - name: Checkout branch
         uses: actions/checkout@v3
-      - name: Install Deck
-        run: |
-          curl -sL https://github.com/Kong/deck/releases/download/v${DECK_VERSION}/deck_${DECK_VERSION}_linux_amd64.tar.gz -o deck.tar.gz
-          tar -xf deck.tar.gz -C /tmp
-          sudo cp /tmp/deck /usr/local/bin/
+      - name: Setup deck
+        uses: kong/setup-deck@v1
+        with:
+          deck-version: ${{ env.DECK_VERSION }}
+          wrapper: false
       - name: Check Control plane is reachable
         run: |
           deck ping \

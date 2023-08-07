@@ -1,0 +1,125 @@
+name: Onboard APIs checks
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+      - id: get-folders
+        run: echo "folder_matrix=$(find services/* -maxdepth 0 -type d | cut -d"/" -f2 | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+    outputs:
+      folder_matrix: ${{ steps.get-folders.outputs.folder_matrix }}
+
+  check-global-configs:
+    name: Check global kong configs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev]
+        include:
+          - env: dev
+            ADMIN_API_URL: ${{ secrets.DEV_ADMIN_API_URL }}
+            ADMIN_API_AUTH_HEADER: ${{ secrets.DEV_ADMIN_API_AUTH_HEADER }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+      - name: Setup deck
+        uses: kong/setup-deck@v1
+        with:
+          deck-version: ${{ env.DECK_VERSION }}
+          wrapper: false
+      - name: Check Control plane is reachable
+        run: |
+          deck ping \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}"
+      - name: Validate Global Plugins
+        run: |
+          deck validate \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            -s plugin-conf/ \
+            -s global-plugins/
+      - name: Validate Consumers
+        run: |
+          deck validate \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            -s plugin-conf/ \
+            -s consumers/
+      - name: Check differences for Global Plugins
+        run: |
+          deck diff \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            -s plugin-conf/ \
+            -s global-plugins/
+      - name: Check differences for Consumers
+        run: |
+          deck diff \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            -s plugin-conf/ \
+            -s consumers/
+
+  check-services-configs:
+    needs: build-matrix
+    name: Check Kong configs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev]
+        include:
+          - env: dev
+            ADMIN_API_URL: ${{ secrets.DEV_ADMIN_API_URL }}
+            ADMIN_API_AUTH_HEADER: ${{ secrets.DEV_ADMIN_API_AUTH_HEADER }}
+        exclude:
+          - env: dev
+            folders: acme
+        folders: ${{ fromJson(needs.build-matrix.outputs.folder_matrix) }}
+    env:
+      DECK_SERVICE_TAG: ${{ matrix.folders }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+      - name: Setup deck
+        uses: kong/setup-deck@v1
+        with:
+          deck-version: ${{ env.DECK_VERSION }}
+          wrapper: false
+      - name: Check Control plane is reachable
+        run: |
+          deck ping \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+      - name: Validate configs
+        run: |
+          deck validate \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            --parallelism 1 \
+            -s meta.yaml \
+            -s plugin-conf/ \
+            -s services/${{ matrix.folders }}/configs.yaml \
+            -s services/${{ matrix.folders }}/plugins/
+      - name: Check difference between current and new configs
+        run: |
+          deck diff \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            --parallelism 1 \
+            -s meta.yaml \
+            -s plugin-conf/ \
+            -s services/${{ matrix.folders }}/configs.yaml \
+            -s services/${{ matrix.folders }}/plugins/

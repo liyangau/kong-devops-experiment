@@ -1,0 +1,42 @@
+name: Offboard APIs
+
+on:
+  push:
+    branches:
+     - offboard
+    paths-ignore:
+      - '**/README.md'
+jobs:
+  offboard-services-configs:
+    name: Check offloading Kong configs
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        folders: ["catch-all"]
+        env: [dev]
+        include:
+          - env: dev
+            ADMIN_API_URL: ${{ secrets.DEV_ADMIN_API_URL }}
+            ADMIN_API_AUTH_HEADER: ${{ secrets.DEV_ADMIN_API_AUTH_HEADER }}
+    env:
+      DECK_SERVICE_TAG: ${{ matrix.folders }}
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v3
+      - name: Setup deck
+        uses: kong/setup-deck@v1
+        with:
+          deck-version: ${{ env.DECK_VERSION }}
+          wrapper: false
+      - name: Check Control plane is reachable
+        run: |
+          deck ping \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+      - name: Delete Kong entities related to $DECK_SERVICE_TAG-svc tag
+        run: |
+          deck reset \
+            --headers "${{ matrix.ADMIN_API_AUTH_HEADER }}" \
+            --kong-addr "${{ matrix.ADMIN_API_URL }}" \
+            --select-tag $DECK_SERVICE_TAG-svc \
+            --force
