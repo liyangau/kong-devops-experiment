@@ -4,6 +4,6 @@ services:
   url: http://httpbin
   routes:
   - name: ${{ env "DECK_SERVICE_TAG" }}-test-route
-    expression: http.path=="/bin" && tls.sni=="test.demofor.fun"
+    expression: http.path=="/bin" && tls.sni=="kong.li.lan"
   - name: ${{ env "DECK_SERVICE_TAG" }}-key-auth-route
-    expression: http.path=="/key" && tls.sni=="test.demofor.fun"
+    expression: http.path=="/key" && tls.sni=="kong.li.lan"

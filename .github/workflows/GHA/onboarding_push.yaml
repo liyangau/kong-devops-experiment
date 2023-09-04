@@ -84,7 +84,6 @@ jobs:
             -s plugin-conf/ \
             -s consumers/
 
-
   check-services-configs:
     needs: build-matrix
     name: Check Kong configs
@@ -99,6 +98,8 @@ jobs:
         exclude:
           - env: dev
             folders: acme
+          - env: dev
+            folders: catch-all
         folders: ${{ fromJson(needs.build-matrix.outputs.folder_matrix) }}
     env:
       DECK_SERVICE_TAG: ${{ matrix.folders }}
